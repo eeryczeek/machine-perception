@@ -86,9 +86,8 @@ if __name__ == "__main__":
     num_classes = 36
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     train_dataset_full = VOSDataset(im_root, gt_root, max_jump=1, is_bl=False)
-    dataset_size = 0.01  # % of dataset to use
+    dataset_size = 1  # % of dataset to use
     subset_size = int(dataset_size * len(train_dataset_full))
     subset_indices = random.sample(range(len(train_dataset_full)), subset_size)
 
