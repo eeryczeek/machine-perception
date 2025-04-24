@@ -1,7 +1,7 @@
 import os
 import json
 import pandas as pd
-from plotnine import ggplot, aes, geom_line, labs, theme_minimal, theme, element_blank, scale_y_continuous
+from plotnine import ggplot, aes, geom_line, labs, theme_minimal, theme, element_blank, scale_y_continuous, scale_x_continuous
 
 
 def load_history(json_path="training_history.json"):
@@ -31,6 +31,7 @@ def plot_train_loss(df, out_dir):
         ggplot(df, aes(x="epoch", y="train_loss"))
         + geom_line(color="red", size=1)
         + labs(title="Train Loss", x="Epoch", y="Loss")
+        + scale_x_continuous(breaks=range(1, df["epoch"].max() + 1))
         + get_custom_theme()
     )
     p.save(os.path.join(out_dir, "train_loss.png"))
@@ -42,6 +43,7 @@ def plot_val_loss(df, out_dir):
         ggplot(df, aes(x="epoch", y="val_loss"))
         + geom_line(color="green", size=1)
         + labs(title="Validation Loss", x="Epoch", y="Loss")
+        + scale_x_continuous(breaks=range(1, df["epoch"].max() + 1))
         + get_custom_theme()
     )
     p.save(os.path.join(out_dir, "val_loss.png"))
@@ -54,6 +56,7 @@ def plot_val_accuracy(df, out_dir):
         + geom_line(color="blue", size=1)
         + labs(title="Validation Accuracy", x="Epoch", y="Accuracy (%)")
         + scale_y_continuous(limits=(0, 100))
+        + scale_x_continuous(breaks=range(1, df["epoch"].max() + 1))
         + get_custom_theme()
     )
     p.save(os.path.join(out_dir, "val_accuracy.png"))
