@@ -18,7 +18,7 @@ def dice_loss(outputs, targets, smooth=1e-6):
     Returns:
         torch.Tensor: Computed Dice Loss.
     """
-    print(outputs.shape, targets.shape)
+    print(f"outputs shape: {outputs.shape}, targets shape: {targets.shape}")
     outputs = torch.sigmoid(outputs)  # Apply sigmoid to get probabilities
     intersection = (outputs * targets).sum(dim=(2, 3))  # Sum over height and width
     union = outputs.sum(dim=(2, 3)) + targets.sum(dim=(2, 3))
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     # Model (using a pre-trained MobileNetV2 as an example)
-    model = CNNWithLSTM(num_classes=num_classes)
+    model = CNNWithLSTM()
     model = model.to(device)
 
     # Loss and optimizer
