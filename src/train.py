@@ -43,12 +43,16 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, num_
         batches_total = len(dataloader)
         avg_batch_time = elapsed / batches_done
         eta_epoch = avg_batch_time * (batches_total - batches_done)
-        eta_total = eta_epoch + avg_batch_time * batches_total * (num_epochs - epoch - 1)
+        eta_total = eta_epoch + avg_batch_time * batches_total * (
+            num_epochs - epoch - 1
+        )
 
-        print(f"Batch {batches_done}/{batches_total} - "
-              f"Trained {trained_samples}/{total_samples} samples - "
-              f"ETA (epoch): {int(eta_epoch)}s - "
-              f"ETA (total): {int(eta_total)}s")
+        print(
+            f"Batch {batches_done}/{batches_total} - "
+            f"Trained {trained_samples}/{total_samples} samples - "
+            f"ETA (epoch): {int(eta_epoch)}s - "
+            f"ETA (total): {int(eta_total)}s"
+        )
 
     return running_loss / len(dataloader)
 
@@ -87,7 +91,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_dataset_full = VOSDataset(im_root, gt_root, max_jump=1, is_bl=False)
-    dataset_size = 1  # % of dataset to use
+    dataset_size = 0.1  # % of dataset to use
     subset_size = int(dataset_size * len(train_dataset_full))
     subset_indices = random.sample(range(len(train_dataset_full)), subset_size)
 
@@ -104,7 +108,9 @@ if __name__ == "__main__":
     history = {"train_loss": [], "val_loss": [], "val_accuracy": []}
 
     for epoch in range(num_epochs):
-        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device, epoch, num_epochs)
+        train_loss = train_one_epoch(
+            model, train_loader, criterion, optimizer, device, epoch, num_epochs
+        )
         val_loss, val_accuracy = validate(model, val_loader, criterion, device)
 
         history["train_loss"].append(train_loss)
