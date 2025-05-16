@@ -3,3 +3,4 @@ src/__pycache__/
 training_history.json
 plots/
 model.pth
+output/
