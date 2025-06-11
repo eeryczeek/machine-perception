@@ -1,41 +1,48 @@
 import torch
 import torch.nn as nn
-from torchvision import models
+import torch.nn.functional as F
 
 
-class CNNWithLSTM(nn.Module):
-    def __init__(self):
-        super(CNNWithLSTM, self).__init__()
-        self.cnn = models.mobilenet_v2()
-        self.cnn.classifier[1] = nn.Identity()  # Remove the final classification layer
-        self.lstm = nn.LSTM(
-            input_size=1280, hidden_size=512, num_layers=1, batch_first=True
+class SimpleVOSNet(nn.Module):
+    def __init__(self, num_classes, hidden_dim=128):
+        super().__init__()
+        # Encoder for each frame (accepts RGB)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 64, 3, padding=1),  # <-- 3 input channels for RGB
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 128, 3, padding=1),
+            nn.ReLU(inplace=True),
         )
-        self.conv3d = nn.Conv3d(
-            in_channels=512, out_channels=3, kernel_size=(3, 3, 3), padding=1
-        )  # 3D convolution for RGB output
-        self.final_conv = nn.Conv2d(
-            in_channels=3, out_channels=3, kernel_size=1
-        )  # Final 2D convolution to adjust channels
+        # LSTM for temporal modeling
+        self.lstm = nn.LSTM(
+            input_size=128
+            * 16
+            * 16,  # assuming input H=W=16 after pooling, adjust as needed
+            hidden_size=hidden_dim,
+            batch_first=True,
+        )
+        # Decoder
+        self.decoder_fc = nn.Linear(hidden_dim, 128 * 16 * 16)
+        self.decoder = nn.Sequential(
+            nn.Conv2d(128, 64, 3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, num_classes, 1),
+        )
 
     def forward(self, x):
-        batch_size, channels, num_frames, height, width = x.size()
-        x = x.permute(
-            0, 2, 1, 3, 4
-        )  # Rearrange to [batch, frames, channels, height, width]
-        x = x.reshape(
-            batch_size * num_frames, channels, height, width
-        )  # Flatten temporal dimension
-        x = self.cnn(x)  # Pass through CNN
-        x = x.reshape(batch_size, num_frames, -1)  # Reshape for LSTM
-        x, _ = self.lstm(x)  # Pass through LSTM
-        x = x[:, -1, :]  # Take the output of the last frame
-        x = x.reshape(batch_size, 512, 1, 1, 1)  # Reshape for 3D convolution
-        x = self.conv3d(x)  # Pass through 3D convolution
-        x = x.squeeze(2)  # Remove the temporal dimension
-        x = self.final_conv(x)  # Adjust channels with 2D convolution
-        x = nn.functional.interpolate(
-            x, size=(384, 384), mode="bilinear", align_corners=False
-        )  # Upsample to target size
-        x = x.unsqueeze(2)  # Add back the temporal dimension as 1
-        return x
+        # x: [B, T, 3, H, W]
+        B, T, C, H, W = x.shape
+        x = x.view(B * T, C, H, W)
+        feats = self.encoder(x)  # [B*T, 128, H, W]
+        # Downsample for LSTM (adjust pooling as needed)
+        pooled = F.adaptive_avg_pool2d(feats, (16, 16))  # [B*T, 128, 16, 16]
+        pooled = pooled.view(B, T, -1)  # [B, T, 128*16*16]
+        lstm_out, _ = self.lstm(pooled)  # [B, T, hidden_dim]
+        decoded = self.decoder_fc(lstm_out)  # [B, T, 128*16*16]
+        decoded = decoded.view(B * T, 128, 16, 16)
+        upsampled = F.interpolate(
+            decoded, size=(H, W), mode="bilinear", align_corners=False
+        )
+        out = self.decoder(upsampled)  # [B*T, num_classes, H, W]
+        out = out.view(B, T, -1, H, W)
+        return out
